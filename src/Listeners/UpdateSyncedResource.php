@@ -31,7 +31,7 @@ class UpdateSyncedResource extends QueueableListener
 
     protected function getTenantsForCentralModel($centralModel)
     {
-        if (! $centralModel instanceof SyncMaster) {
+        if (!$centralModel instanceof SyncMaster) {
             // If we're trying to use a tenant User model instead of the central User model, for example.
             throw new ModelNotSyncMasterException(get_class($centralModel));
         }
@@ -60,7 +60,9 @@ class UpdateSyncedResource extends QueueableListener
             } else {
                 // If the resource doesn't exist at all in the central DB,we create
                 // the record with all attributes, not just the synced ones.
-                $centralModel = $event->model->getCentralModelName()::create($event->model->getAttributes());
+                $attributes = $event->model->getAttributes();
+                unset($attributes['id']);
+                $centralModel = $event->model->getCentralModelName()::create($attributes);
                 event(new SyncedResourceChangedInForeignDatabase($event->model, null));
             }
         });
@@ -72,7 +74,7 @@ class UpdateSyncedResource extends QueueableListener
 
         $mappingExists = $centralModel->tenants->contains($currentTenantMapping);
 
-        if (! $mappingExists) {
+        if (!$mappingExists) {
             // Here we should call TenantPivot, but we call general Pivot, so that this works
             // even if people use their own pivot model that is not based on our TenantPivot
             Pivot::withoutEvents(function () use ($centralModel, $event) {
@@ -82,7 +84,7 @@ class UpdateSyncedResource extends QueueableListener
 
         return $centralModel->tenants->filter(function ($model) use ($currentTenantMapping) {
             // Remove the mapping for the current tenant.
-            return ! $currentTenantMapping($model);
+            return !$currentTenantMapping($model);
         });
     }
 
@@ -113,7 +115,9 @@ class UpdateSyncedResource extends QueueableListener
                     $localModel->update($syncedAttributes);
                 } else {
                     // When creating, we use all columns, not just the synced ones.
-                    $localModel = $localModelClass::create($eventModel->getAttributes());
+                    $attributes = $eventModel->getAttributes();
+                    unset($attributes['id']);
+                    $localModel = $localModelClass::create($attributes);
                 }
 
                 event(new SyncedResourceChangedInForeignDatabase($localModel, $tenant));
